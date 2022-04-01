@@ -11,3 +11,5 @@
 # Login to Required AWS account where you need to setup this S3.
 
 ![image](https://user-images.githubusercontent.com/44979343/161304826-247e63ce-77b1-4252-acfb-48d97f49cec8.png)
+
+![image](https://user-images.githubusercontent.com/44979343/161305978-2b9b4821-0229-4ab3-85be-007bc353b7c7.png)
