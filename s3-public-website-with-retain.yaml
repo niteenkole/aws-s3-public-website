@@ -1,10 +1,7 @@
-
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Create the AWS s3 bucket 
 
-                   
 Parameters:
-
   ACL:
     Type: String
     Description: Would you like to apply a canned access control list to grant predefined permissions?
@@ -125,8 +122,6 @@ Metadata:
       Encryption:
         default: "Enable Default Encryption"
 
-          
-
 Conditions:
   hasACL:
     !Not [!Equals [!Ref ACL, "None"]]
@@ -182,14 +177,11 @@ Resources:
                     - /* 
        Bucket: !Ref S3Bucket               
 
-
 Outputs:
-
   BucketURL:
     Value: !Join ['', ["https://", !GetAtt S3Bucket.DomainName]]
     Export:
       Name: !Join ['', [!Ref "AWS::StackName", "BucketURL"]]
-
   BucketARN:
     Value: !GetAtt S3Bucket.Arn
     Export:
