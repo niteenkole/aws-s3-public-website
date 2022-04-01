@@ -1,0 +1,196 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create the AWS s3 bucket 
+
+                   
+Parameters:
+
+  ACL:
+    Type: String
+    Description: Would you like to apply a canned access control list to grant predefined permissions?
+    # S3 Canned ACLs: https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl
+    AllowedValues:
+        # private - (Bucket & Object): Owner gets FULL_CONTROL. No one else has access rights. *default*
+      - "Private"
+        # public-read - (Bucket & Object): Owner gets FULL_CONTROL.  The AllUsers group gets READ access.
+      - "PublicRead"
+        # public-read-write - (Bucket & Object): Owner gets FULL_CONTROL. The AllUsers group gets READ and WRITE access. *Not generally recommended*
+      - "PublicReadWrite"
+        # aws-exec-read - (Bucket & Object): Owner gets FULL_CONTROL. Amazon EC2 gets READ access to GET an AMI bundle from Amazon S3.
+      - "AwsExecRead"
+        # authenitcated-read - (Bucket & Object): Owner gets FULL_CONTROL. The AuthenticatedUsers group gets READ access.
+      - "AuthenticatedRead"
+        # bucket-owner-read - (Object): Object owner gets FULL_CONTROL. Bucket owner gets READ access. *If specified at time of bucket creation, Amazon S3 ignores it*
+      - "BucketOwnerRead"
+        # bucket-owner-full-control - (Object): Both object owner and bucket owner get FULL_CONTROL over objects. *If specified at time of bucket creation, Amazon S3 ignores it*
+      - "BucketOwnerFullControl"
+        # log-delivery-write - (Bucket): The LogDelivery group gets WRITE and READ_ACP permissions on the bucket. *See S3 Server Access Logging for more information: https://docs.aws.amazon.com/AmazonS3/latest/dev/ServerLogs.html *
+      - "LogDeliveryWrite"
+        # none - (N/A): No canned ACL defined
+      - "None"
+    Default: "None"
+
+  BucketName: 
+    Type: String
+    Description: What name would you like to use for the S3 Bucket?
+    # Bucket Restrictions: https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html
+    AllowedPattern: "^([a-z0-9]{1}[a-z0-9-]{1,61}[a-z0-9]{1})$"
+    ConstraintDescription: "Bucket names must start and end with a letter or number, and be between 3 and 63 characters in length."
+
+  Encryption:
+    Type: String
+    Description: "Would you like to enable default encryption for objects stored in your bucket?"
+    AllowedValues:
+      - "true"
+      - "false"
+    ConstraintDescription: "A valid boolean value is required (true/false)"
+    Default: "true"
+
+##  KmsKeyId:
+##    Type: String
+##    Description: Would you like to use a custom KMS Key for encryption?  (Requires a valid KMS Key Id)
+##    AllowedPattern: "^([a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$"
+##    Default: "12345678-aaaa-bbbb-cccc-123456789abc"
+
+  Versioning:
+    Type: String
+    Description: Would you like to enable versioning for objects in the S3 Bucket?
+    AllowedValues:
+      - "Enabled"
+      - "Suspended"
+    Default: "Suspended"
+
+  costcenter:
+    Type: Number
+    Description: Please add tag for costcenter 
+
+  createdby:
+    Type: String
+    Description: Please add tag details
+
+  department:
+    Type: String
+    Description: Please add tag for Department
+
+  requestor:
+    Type: String
+    Description: Please add tag details of requestor 
+
+  env:
+    Type: String
+    Description: Please add tag of requestor
+    AllowedValues:
+      - "Prod"
+      - "Dev"
+      - "QA"
+      - "Sandbox"      
+
+Metadata:
+
+  Authors:
+    Description:  Niteen Kole
+
+  Purpose:
+    Description: "This template is used to create a single S3 bucket for basic object storage. Parameters 
+                  provide the ability to use S3 canned ACLs, enable default encryption and enable object versioning.  On successful resource creation both the 
+                  bucket url and arn will be exported and available for import in other CloudFormation 
+                  templates.
+                  Requirement 01: use AWS S3 as static website"
+  Date:
+    Description:  07 March 2022
+
+  LastModified:
+    Description:  "07 March 2022   Reason: initial setup" 
+
+## If we dont use "AWS::CloudFormation::Interface" by default,the AWS CloudFormation console alphabetically sorts parameters by their logical ID                
+  
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "S3 Bucket Configuration Parameters"
+        Parameters:
+          - BucketName
+          - ACL
+          - Versioning
+          - Encryption
+          - KmsKeyId
+    ParameterLabels:
+      BucketName:
+        default: "S3 Bucket Name"
+      ACL:
+        default: "Bucket Access Control List"
+      Versioning:
+        default: "Object Versioning"
+      Encryption:
+        default: "Enable Default Encryption"
+
+          
+
+Conditions:
+  hasACL:
+    !Not [!Equals [!Ref ACL, "None"]]
+
+  isEncrypted:
+    !Equals [!Ref Encryption, "true"]
+
+
+Resources:
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: !If [hasACL, !Ref ACL, !Ref "AWS::NoValue"]
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: !Ref BucketName
+      VersioningConfiguration:
+        Status: !Ref Versioning
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+      Tags:
+        - Key: costcenter
+          Value: !Ref costcenter
+        - Key: createdby
+          Value: !Ref createdby
+        - Key: department
+          Value: !Ref department
+        - Key: requestor
+          Value: !Ref requestor
+        - Key: env
+          Value: !Ref env        
+## May be we dont want stack to delete our s3 by mistake :)
+    DeletionPolicy: Retain    
+  BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+       PolicyDocument: 
+          Id: MyPolicy
+          Version: 2012-10-17
+          Statement:
+             - Sid: PublicReadForGetBucketObjects
+               Effect: Allow
+               Principal: '*'
+               Action: 's3:GetObject'
+               Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref S3Bucket 
+                    - /* 
+       Bucket: !Ref S3Bucket               
+
+
+Outputs:
+
+  BucketURL:
+    Value: !Join ['', ["https://", !GetAtt S3Bucket.DomainName]]
+    Export:
+      Name: !Join ['', [!Ref "AWS::StackName", "BucketURL"]]
+
+  BucketARN:
+    Value: !GetAtt S3Bucket.Arn
+    Export:
+      Name: !Join ['', [!Ref "AWS::StackName", "BucketARN"]]
